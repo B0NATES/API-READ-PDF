@@ -1,0 +1,20 @@
+{
+  "name": "api-pdf",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/app.js \"Error: no test specified\" && exit 1",
+    "start": "node src/app.js"
+    
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "exprexx": "^1.0.0",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.11",
+    "pdf-parse": "^2.4.5"
+  }
+}
