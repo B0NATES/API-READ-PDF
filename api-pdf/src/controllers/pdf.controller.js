@@ -22,12 +22,53 @@ exports.extractText = async (req, res) => {
       throw new Error('PDFParse não é uma classe válida');
     }
 
-    // cria o parser com buffer (igual doc)
+   
     parser = new PDFParse({
       data: req.file.buffer
     });
 
-    const result = await parser.getText();
+
+    /*
+    async function testaReq() {
+      return parser.getText();
+    }
+
+
+      let qtdRequisicao = 0;
+      const resultados = [];
+
+    for (let i = 0; i < 100; i++) {
+      const r = await testaReq(); 
+      resultados.push(r);
+      console.log("qt req");
+      
+      qtdRequisicao++;
+    }
+
+   
+    const firstResult = resultados[0];
+
+
+    return res.status(200).json({
+      success: true,
+      quantidadeReq: qtdRequisicao,
+      data: {
+        pages: firstResult.total,
+        text: firstResult.text
+      }
+    });
+
+    
+    
+    */
+
+
+      
+    
+
+
+ const result = await parser.getText();
+    
 
     return res.status(200).json({
       success: true,
@@ -37,6 +78,9 @@ exports.extractText = async (req, res) => {
       }
     });
 
+
+
+   
   } catch (error) {
     console.error('ERRO REAL PDF >>>', error);
 
@@ -46,7 +90,7 @@ exports.extractText = async (req, res) => {
     });
 
   } finally {
-    // MUITO IMPORTANTE na v2 (libera memória / worker)
+  
     if (parser) {
       await parser.destroy();
     }
