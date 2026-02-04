@@ -3,7 +3,8 @@ const FormData = require('form-data');
 const fs = require('fs');
 const path = require('path');
 
-const URL = 'http://localhost:3000/api/v1/pdf/text';
+//const URL = 'http://localhost:3000/api/v1/pdf/text'; // local
+const URL = 'http://10.4.4.15:8083/api/v1/pdf/text'; //PROD
 const TOTAL_REQUESTS = 200; 
 
 

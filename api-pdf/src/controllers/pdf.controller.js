@@ -4,85 +4,62 @@ exports.extractText = async (req, res) => {
   let parser;
 
   try {
-    console.log('Arquivo recebido?', !!req.file);
+    console.log('================ PDF API ================');
+    console.log('Content-Type:', req.headers['content-type']);
 
-    if (!req.file) {
+    let pdfBuffer;
+    let fileName = 'arquivo.pdf';
+    let origem = '';
+
+    if (req.body?.fileBase64) {
+      origem = 'BASE64';
+
+      fileName = req.body.fileName || fileName;
+      pdfBuffer = Buffer.from(req.body.fileBase64, 'base64');
+    }
+
+ 
+    else if (req.file?.buffer) {
+      origem = 'MULTIPART';
+
+      fileName = req.file.originalname;
+      pdfBuffer = req.file.buffer;
+    }
+
+  
+    else {
       return res.status(400).json({
         success: false,
-        message: 'Arquivo PDF não enviado'
+        message: 'Nenhum PDF recebido (Base64 ou multipart)'
       });
     }
 
-    console.log('Nome:', req.file.originalname);
-    console.log('Tipo:', req.file.mimetype);
-    console.log('Tamanho:', req.file.size);
-    console.log('PDFParse:', typeof PDFParse);
+    console.log('Origem:', origem);
+    console.log('Arquivo:', fileName);
+    console.log('Tamanho (bytes):', pdfBuffer.length);
 
-    if (typeof PDFParse !== 'function') {
-      throw new Error('PDFParse não é uma classe válida');
+    if (!Buffer.isBuffer(pdfBuffer)) {
+      throw new Error('Conteúdo do PDF inválido');
     }
 
-   
-    parser = new PDFParse({
-      data: req.file.buffer
-    });
+    
+    parser = new PDFParse({ data: pdfBuffer });
 
+    const result = await parser.getText();
 
-    /*
-    async function testaReq() {
-      return parser.getText();
-    }
-
-
-      let qtdRequisicao = 0;
-      const resultados = [];
-
-    for (let i = 0; i < 100; i++) {
-      const r = await testaReq(); 
-      resultados.push(r);
-      console.log("qt req");
-      
-      qtdRequisicao++;
-    }
-
-   
-    const firstResult = resultados[0];
-
+    console.log('PDF processado com sucesso');
+    console.log('Páginas:', result.total);
 
     return res.status(200).json({
       success: true,
-      quantidadeReq: qtdRequisicao,
-      data: {
-        pages: firstResult.total,
-        text: firstResult.text
-      }
+      origem,
+      fileName,
+      pages: result.total,
+      text: result.text
     });
 
-    
-    
-    */
-
-
-      
-    
-
-
- const result = await parser.getText();
-    
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        pages: result.total,
-        text: result.text
-      }
-    });
-
-
-
-   
   } catch (error) {
-    console.error('ERRO REAL PDF >>>', error);
+    console.error('❌ ERRO PDF API >>>', error);
 
     return res.status(500).json({
       success: false,
@@ -90,9 +67,9 @@ exports.extractText = async (req, res) => {
     });
 
   } finally {
-  
     if (parser) {
       await parser.destroy();
+      console.log('Parser destruído');
     }
   }
 };

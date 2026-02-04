@@ -1,10 +1,18 @@
 const express = require('express');
-const multer = require('multer');
+const router = express.Router();
+
+const upload = require('../middlewares/upload.middleware');
 const pdfController = require('../controllers/pdf.controller');
 
-const router = express.Router();
-const upload = multer(); 
-
-router.post('/text', upload.single('file'), pdfController.extractText);
+/**
+ * Endpoint único, suporta:
+ * - JSON (Base64)
+ * - multipart/form-data
+ */
+router.post(
+  '/api/v1/pdf/text',
+  upload.single('file'), // só age se for multipart
+  pdfController.extractText
+);
 
 module.exports = router;
