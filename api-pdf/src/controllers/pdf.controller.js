@@ -1,8 +1,7 @@
-const { PDFParse } = require('pdf-parse');
+const { extractTextFromBuffer } = require('../services/pdf.services');
+const { base64ToPdfBuffer } = require('../utils/base64ToBuffer');
 
 exports.extractText = async (req, res) => {
-  let parser = null;
-
   try {
     console.log('================ PDF API ================');
     console.log('Method:', req.method);
@@ -14,40 +13,23 @@ exports.extractText = async (req, res) => {
     let fileName = 'arquivo.pdf';
     let origem = null;
 
-    // =====================================================
-    // 1️⃣ RECEBIMENTO VIA BASE64 (JSON)
-    // Aceita: fileBase64 OU base64
-    // =====================================================
+    //  BASE64 (JSON)
     if (req.body?.fileBase64 || req.body?.base64) {
       origem = 'BASE64';
 
       fileName = req.body.fileName || fileName;
 
-      let base64 =
-        req.body.fileBase64 ||
-        req.body.base64;
+      let base64 = req.body.fileBase64 || req.body.base64;
 
       console.log('[BASE64] Nome:', fileName);
       console.log('[BASE64] Tamanho string:', base64.length);
 
-      // Remove prefixo data:application/pdf;base64,
-      if (base64.indexOf('base64,') !== -1) {
-        console.log('[BASE64] Prefixo detectado, removendo...');
-        base64 = base64.split('base64,')[1];
-      }
-
-      // Remove espaços/quebras
-      base64 = base64.replace(/\s/g, '');
-
-      pdfBuffer = Buffer.from(base64, 'base64');
+      pdfBuffer = base64ToPdfBuffer(base64);
 
       console.log('[BASE64] Buffer criado:', Buffer.isBuffer(pdfBuffer));
       console.log('[BASE64] Buffer size:', pdfBuffer.length);
     }
-
-    // =====================================================
-    // 2️⃣ RECEBIMENTO VIA MULTIPART (FORM-DATA)
-    // =====================================================
+    // MULTIPART (FORM-DATA)
     else if (req.file?.buffer) {
       origem = 'MULTIPART';
 
@@ -57,12 +39,9 @@ exports.extractText = async (req, res) => {
       console.log('[MULTIPART] Nome:', fileName);
       console.log('[MULTIPART] Buffer size:', pdfBuffer.length);
     }
-
-    // =====================================================
-    // 3️⃣ ERRO — NENHUM ARQUIVO
-    // =====================================================
+    // ERRO — NENHUM ARQUIVO
     else {
-      console.error('❌ Nenhum arquivo recebido');
+      console.error('Nenhum arquivo recebido');
       console.log('========================================');
 
       return res.status(400).json({
@@ -71,49 +50,28 @@ exports.extractText = async (req, res) => {
       });
     }
 
-    // =====================================================
-    // 4️⃣ VALIDAÇÃO DO BUFFER
-    // =====================================================
-    if (!Buffer.isBuffer(pdfBuffer) || pdfBuffer.length === 0) {
-      throw new Error('Conteúdo do PDF inválido ou vazio');
-    }
-
-    console.log('Origem:', origem);
-    console.log('Arquivo:', fileName);
-    console.log('Tamanho final (bytes):', pdfBuffer.length);
-
-    // =====================================================
-    // 5️⃣ PROCESSAMENTO DO PDF
-    // =====================================================
-    parser = new PDFParse({ data: pdfBuffer });
-
-    const result = await parser.getText();
+    // PROCESSAMENTO DO PDF (core isolado)
+    const result = await extractTextFromBuffer(pdfBuffer);
 
     console.log('PDF processado com sucesso');
-    console.log('Páginas:', result.total);
+    console.log('Páginas:', result.pages);
     console.log('========================================');
 
     return res.status(200).json({
       success: true,
       origem,
       fileName,
-      pages: result.total,
+      pages: result.pages,
       text: result.text
     });
 
   } catch (error) {
-    console.error('❌ ERRO PDF API >>>', error);
+    console.error('ERRO PDF API >>>', error);
     console.log('========================================');
 
     return res.status(500).json({
       success: false,
       message: error.message
     });
-
-  } finally {
-    if (parser) {
-      await parser.destroy();
-      console.log('Parser destruído');
-    }
   }
 };
