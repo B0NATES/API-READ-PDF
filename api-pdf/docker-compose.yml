@@ -1,0 +1,14 @@
+services:
+  api-pdf:
+    build: .
+    container_name: api-pdf
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - TESS_LANG_PATH=/app/tessdata
+      - TESSDATA_PREFIX=/app/tessdata
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped

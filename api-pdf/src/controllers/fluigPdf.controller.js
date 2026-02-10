@@ -1,60 +1,77 @@
 const { extractTextFromBuffer } = require('../services/pdf.services');
 const { base64ToPdfBuffer } = require('../utils/base64ToBuffer');
-const { getFluigDocumentBase64 } = require('../services/fluigSoap.service');
+const { getFluigDocumentBase64 } = require('../services/fluigSoap.service'); 
+const pdfOcrController = require('./pdfOcr.controller');
 
-/**
- * Endpoint que:
- * 1) Recebe dados do documento no Fluig (documentId, versão, etc.)
- * 2) Busca o PDF no Fluig via SOAP
- * 3) Converte Base64 -> Buffer
- * 4) Reutiliza o mesmo core de leitura (pdf-parse v2)
- */
+function precisaOCR(texto) {
+  if (!texto) return true;
+  const t = String(texto).trim();
+  if (!t) return true;
+  if (t === '-- 1 of 1 --') return true;
+  if (t.length < 30) return true;
+  return false;
+}
+
+async function executarOCRBase64(base64) {
+  const fakeReq = {
+    body: {
+      base64,
+      lang: 'por',
+      scale: 1.5,
+      maxPages: 3
+    }
+  };
+
+  let payload = null;
+  const fakeRes = {
+    status: () => fakeRes,
+    json: (data) => { payload = data; }
+  };
+
+  await pdfOcrController.extractTextFromBase64Ocr(fakeReq, fakeRes);
+  return payload;
+}
+
 exports.extractTextFromFluig = async (req, res) => {
   try {
-    const {
-      documentId,
-      documentoVersao,
-      nomeArquivo,
-      colleagueId
-    } = req.body;
-
-    if (!documentId || !documentoVersao || !nomeArquivo || !colleagueId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Campos obrigatórios: documentId, documentoVersao, nomeArquivo, colleagueId'
-      });
+    const { documentId, documentoVersao, colleagueId, nomeArquivo } = req.body || {};
+    if (!documentId || documentoVersao == null) {
+      return res.status(400).json({ success: false, message: 'Informe "documentId" e "documentoVersao".' });
     }
 
-    // 1) SOAP -> Base64
-    const base64 = await getFluigDocumentBase64({
-      documentId,
-      documentoVersao,
-      nomeArquivo,
-      colleagueId
-    });
+    const base64 = await getFluigDocumentBase64({ documentId, documentoVersao, colleagueId, nomeArquivo });
 
-    // 2) Base64 -> Buffer
-    const pdfBuffer = base64ToPdfBuffer(base64);
+    const buffer = base64ToPdfBuffer(base64);
+    const result = await extractTextFromBuffer(buffer);
 
-    // 3) Core de leitura
-    const result = await extractTextFromBuffer(pdfBuffer);
+    let textFinal = result.text;
+    let metodo = 'pdf-parse';
 
-    return res.status(200).json({
+    if (precisaOCR(textFinal)) {
+      console.log('[FLUIG HM] Texto insuficiente, tentando OCR...');
+
+      const ocr = await executarOCRBase64(base64);
+
+      if (ocr?.success && ocr.texto && String(ocr.texto).trim().length > 0) {
+        textFinal = ocr.texto;
+        metodo = 'ocr';
+      } else {
+        console.log('[FLUIG HM] OCR falhou ou retornou vazio, mantendo resultado do pdf-parse.');
+      }
+    }
+
+    return res.json({
       success: true,
-      origem: 'FLUIG_SOAP',
+      ambiente: 'hm',
+      metodo,
       documentId,
       documentoVersao,
+      colleagueId,
       nomeArquivo,
       pages: result.pages,
-      text: result.text
+      text: textFinal
     });
-
   } catch (error) {
-    console.error('❌ ERRO em extractTextFromFluig >>>', error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -4,22 +4,30 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/app.js \"Error: no test specified\" && exit 1",
-    "start": "node src/app.js"
+    "dev": "nodemon src/app.js",
+    "start": "node src/app.js",
+    "reset-deps": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }; if (Test-Path package-lock.json) { Remove-Item -Force package-lock.json }; npm cache verify; npm install\"",
+    "reset-deps:linux": "rm -rf node_modules package-lock.json && npm cache verify && npm install"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.13.4",
+    "canvas": "^3.2.1",
     "express": "^5.2.1",
     "multer": "^2.0.2",
     "nodemon": "^3.1.11",
     "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "5.4.296",
+    "tesseract.js": "^7.0.0",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "form-data": "^4.0.5",
     "node-fetch": "^2.7.0"
+  },
+  "overrides": {
+    "pdfjs-dist": "5.4.296"
   }
 }
